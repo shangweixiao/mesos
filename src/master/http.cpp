@@ -456,7 +456,7 @@ string Master::Http::API_HELP()
     TLDR(
         "Endpoint for API calls against the master."),
     DESCRIPTION(
-        "Returns 200 OK when the request was processed sucessfully.",
+        "Returns 200 OK when the request was processed successfully.",
         "Returns 307 TEMPORARY_REDIRECT redirect to the leading master when",
         "current master is not the leader.",
         "Returns 503 SERVICE_UNAVAILABLE if the leading master cannot be",
@@ -3321,6 +3321,7 @@ Future<Response> Master::Http::stateSummary(
 JSON::Object model(
     const string& name,
     Option<double> weight,
+    Option<Quota> quota,
     Option<Role*> _role)
 {
   JSON::Object object;
@@ -3330,6 +3331,10 @@ JSON::Object model(
     object.values["weight"] = weight.get();
   } else {
     object.values["weight"] = 1.0; // Default weight.
+  }
+
+  if (quota.isSome()) {
+    object.values["quota"] = model(quota->info);
   }
 
   if (_role.isNone()) {
@@ -3468,12 +3473,17 @@ Future<Response> Master::Http::roles(
             weight = master->weights[name];
           }
 
+          Option<Quota> quota = None();
+          if (master->quotas.contains(name)) {
+            quota = master->quotas.at(name);
+          }
+
           Option<Role*> role = None();
           if (master->roles.contains(name)) {
             role = master->roles.at(name);
           }
 
-          array.values.push_back(model(name, weight, role));
+          array.values.push_back(model(name, weight, quota, role));
         }
 
         object.values["roles"] = std::move(array);

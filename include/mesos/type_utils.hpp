@@ -192,6 +192,14 @@ inline bool operator!=(const FrameworkID& left, const FrameworkID& right)
 }
 
 
+inline bool operator!=(
+    const ResourceProviderID& left,
+    const ResourceProviderID& right)
+{
+  return left.value() != right.value();
+}
+
+
 inline bool operator!=(const SlaveID& left, const SlaveID& right)
 {
   return left.value() != right.value();
@@ -288,6 +296,11 @@ std::ostream& operator<<(std::ostream& stream, const OfferID& offerId);
 std::ostream& operator<<(std::ostream& stream, const RateLimits& limits);
 
 
+std::ostream& operator<<(
+    std::ostream& stream,
+    const ResourceProviderID& resourceProviderId);
+
+
 std::ostream& operator<<(std::ostream& stream, const SlaveID& slaveId);
 
 
@@ -320,6 +333,9 @@ std::ostream& operator<<(
 
 
 std::ostream& operator<<(std::ostream& stream, const Image::Type& imageType);
+
+
+std::ostream& operator<<(std::ostream& stream, const Secret::Type& secretType);
 
 
 std::ostream& operator<<(std::ostream& stream, const RLimitInfo& rlimitInfo);

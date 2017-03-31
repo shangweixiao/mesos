@@ -558,6 +558,14 @@ ostream& operator<<(ostream& stream, const RateLimits& limits)
 }
 
 
+ostream& operator<<(
+    ostream& stream,
+    const ResourceProviderID& resourceProviderId)
+{
+  return stream << resourceProviderId.value();
+}
+
+
 ostream& operator<<(ostream& stream, const RLimitInfo& rlimitInfo)
 {
   return stream << JSON::protobuf(rlimitInfo);
@@ -640,6 +648,12 @@ ostream& operator<<(
 ostream& operator<<(ostream& stream, const Image::Type& imageType)
 {
   return stream << Image::Type_Name(imageType);
+}
+
+
+ostream& operator<<(ostream& stream, const Secret::Type& secretType)
+{
+  return stream << Secret::Type_Name(secretType);
 }
 
 

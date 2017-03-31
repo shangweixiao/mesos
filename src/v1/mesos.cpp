@@ -288,7 +288,19 @@ bool operator==(const Labels& left, const Labels& right)
 }
 
 
+bool operator==(const ResourceProviderID& left, const ResourceProviderID& right)
+{
+  return left.value() == right.value();
+}
+
+
 bool operator!=(const Labels& left, const Labels& right)
+{
+  return !(left == right);
+}
+
+
+bool operator!=(const ResourceProviderID& left, const ResourceProviderID& right)
 {
   return !(left == right);
 }
@@ -554,6 +566,20 @@ ostream& operator<<(
 ostream& operator<<(ostream& stream, const Image::Type& imageType)
 {
   return stream << Image::Type_Name(imageType);
+}
+
+
+ostream& operator<<(ostream& stream, const Secret::Type& secretType)
+{
+  return stream << Secret::Type_Name(secretType);
+}
+
+
+ostream& operator<<(
+    ostream& stream,
+    const ResourceProviderID& resourceProviderId)
+{
+  return stream << resourceProviderId.value();
 }
 
 

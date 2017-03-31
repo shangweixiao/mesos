@@ -731,7 +731,7 @@ private:
 
       // Stop checking the task.
       if (checker.get() != nullptr) {
-        checker->stop();
+        checker->pause();
       }
 
       // Stop health checking the task.
@@ -776,7 +776,7 @@ private:
 
     // Stop checking the task.
     if (checker.get() != nullptr) {
-      checker->stop();
+      checker->pause();
     }
 
     // Stop health checking the task.
@@ -827,7 +827,7 @@ private:
         None(),
         message);
 
-    // Indicate that a kill occured due to a failing health check.
+    // Indicate that a kill occurred due to a failing health check.
     if (killed && killedByHealthCheck) {
       status.set_healthy(false);
     }

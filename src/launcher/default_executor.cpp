@@ -120,7 +120,8 @@ public:
       const ExecutorID& _executorId,
       const ::URL& _agent,
       const string& _sandboxDirectory,
-      const string& _launcherDirectory)
+      const string& _launcherDirectory,
+      const Option<string>& _authenticationToken)
     : ProcessBase(process::ID::generate("default-executor")),
       state(DISCONNECTED),
       contentType(ContentType::PROTOBUF),
@@ -133,7 +134,8 @@ public:
       executorId(_executorId),
       agent(_agent),
       sandboxDirectory(_sandboxDirectory),
-      launcherDirectory(_launcherDirectory) {}
+      launcherDirectory(_launcherDirectory),
+      authenticationToken(_authenticationToken) {}
 
   virtual ~DefaultExecutor() = default;
 
@@ -161,8 +163,12 @@ public:
       }
     }
 
-    // Pause all health checks.
+    // Pause all checks and health checks.
     foreachvalue (Owned<Container> container, containers) {
+      if (container->checker.isSome()) {
+        container->checker->get()->pause();
+      }
+
       if (container->healthChecker.isSome()) {
         container->healthChecker->get()->pause();
       }
@@ -191,8 +197,12 @@ public:
           wait(containers.keys());
         }
 
-        // Resume all health checks.
+        // Resume all checks and health checks.
         foreachvalue (Owned<Container> container, containers) {
+          if (container->checker.isSome()) {
+            container->checker->get()->resume();
+          }
+
           if (container->healthChecker.isSome()) {
             container->healthChecker->get()->resume();
           }
@@ -493,17 +503,13 @@ protected:
         false});
 
       if (task.has_check()) {
-        // TODO(alexr): Add support for command checks.
-        CHECK_NE(CheckInfo::COMMAND, task.check().type())
-          << "Command checks are not supported yet";
-
         Try<Owned<checks::Checker>> checker =
           checks::Checker::create(
               task.check(),
               defer(self(), &Self::taskCheckUpdated, taskId, lambda::_1),
               taskId,
-              None(),
-              vector<string>());
+              containerId,
+              agent);
 
         if (checker.isError()) {
           // TODO(anand): Should we send a TASK_FAILED instead?
@@ -736,11 +742,11 @@ protected:
       deserialize<agent::Response>(contentType, response->body);
     CHECK_SOME(waitResponse);
 
-    // If there is an associated checker with the task, stop it to
-    // avoid sending check updates after a terminal status update.
+    // If the task is checked, pause the associated checker to avoid
+    // sending check updates after a terminal status update.
     if (container->checker.isSome()) {
       CHECK_NOTNULL(container->checker->get());
-      container->checker->get()->stop();
+      container->checker->get()->pause();
       container->checker = None();
     }
 
@@ -929,13 +935,13 @@ protected:
     CHECK(!container->killing);
     container->killing = true;
 
-    // If the task is checked, stop the associated checker.
+    // If the task is checked, pause the associated checker.
     //
     // TODO(alexr): Once we support `TASK_KILLING` in this executor,
     // consider continuing checking the task after sending `TASK_KILLING`.
     if (container->checker.isSome()) {
       CHECK_NOTNULL(container->checker->get());
-      container->checker->get()->stop();
+      container->checker->get()->pause();
       container->checker = None();
     }
 
@@ -1191,6 +1197,10 @@ private:
     request.headers = {{"Accept", stringify(contentType)},
                        {"Content-Type", stringify(contentType)}};
 
+    if (authenticationToken.isSome()) {
+      request.headers["Authorization"] = "Bearer " + authenticationToken.get();
+    }
+
     // Only pipeline requests when there is an active connection.
     if (connection.isSome()) {
       request.keepAlive = true;
@@ -1286,6 +1296,7 @@ private:
   const ::URL agent; // Agent API URL.
   const string sandboxDirectory;
   const string launcherDirectory;
+  const Option<string> authenticationToken;
 
   LinkedHashMap<UUID, Call::Update> unacknowledgedUpdates;
 
@@ -1392,13 +1403,20 @@ int main(int argc, char** argv)
   }
   sandboxDirectory = value.get();
 
+  Option<string> authenticationToken;
+  value = os::getenv("MESOS_EXECUTOR_AUTHENTICATION_TOKEN");
+  if (value.isSome()) {
+    authenticationToken = value.get();
+  }
+
   Owned<mesos::internal::DefaultExecutor> executor(
       new mesos::internal::DefaultExecutor(
           frameworkId,
           executorId,
           agent,
           sandboxDirectory,
-          flags.launcher_dir));
+          flags.launcher_dir,
+          authenticationToken));
 
   process::spawn(executor.get());
   process::wait(executor.get());
